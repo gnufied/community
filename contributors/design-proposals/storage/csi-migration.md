@@ -26,7 +26,7 @@ As the CSI Spec moves towards GA and more storage plugins are being created and
 becoming production ready, we will want to migrate our in-tree plugin logic to
 use CSI plugins instead. This is motivated by the fact that we are currently
 supporting two versions of each plugin (one in-tree and one CSI), and that we
-want to eventually transition all storage users to CSI.
+want to eventually migrate all storage users to CSI.
 
 In order to do this we need to migrate the internals of the in-tree plugins to
 call out to CSI Plugins because we will be unable to deprecate the current
@@ -287,8 +287,29 @@ existing Pods in the ADC.
 
 
 ### Volume Resize
+#### Offline Resizing
+In the OperationGenerator, `GenerateExpandVolumeFunc` is used to expand a volume after 
+Pod is deleted. At the beginning of the `GenerateExpandVolumeFunc`, we will check whether 
+the volume supports migration and whether migration is enabled. If enabled, we will return
+a noop function to by-pass in-tree resizer (expand controller).
 
-TODO: Design
+In the OperationGenerator, `GenerateMountVolumeFunc` is used to expand file system after volume
+is expanded and staged/mounted. The migration logic is covered by previous migration of volume mount.
+
+For external resizer, we will update it to expand volume for both CSI volume and in-tree 
+volume (only if migration is enabled). For migrated in-tree volume, it will update in-tree PV object
+with new volume size and mark in-tree PVC as resizing finished.
+
+To synchronize between in-tree resizer and external resize, external resizer will find resizer name
+using PVC annotation `volume.kubernetes.io/storage-resizer`. Since `volume.kubernetes.io/storage-resizer`
+annotation defines the stroage backend actually being used, for in-tree volume, the resizer name is the
+in-tree plugin name; for CSI volume, the resizer name is the CSI driver name. Then when the resizer
+name matches to the CSI driver name, it guarantees that the PV is provisioned by a CSI driver and it should
+be resized by the same driver, hence external resizer will proceed with volume resizing. Otherwise,
+it will yield to in-tree resizer.
+
+#### Online Resizing
+//TODO: Design
 
 ### Raw Block
 In the OperationGenerator, `GenerateMapVolumeFunc`, `GenerateUnmapVolumeFunc` and 
