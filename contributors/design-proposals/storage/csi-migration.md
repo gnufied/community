@@ -307,10 +307,8 @@ with new volume size and mark in-tree PVC as resizing finished.
 
 To synchronize between in-tree resizer and external resize, external resizer will find resizer name
 using PVC annotation `volume.kubernetes.io/storage-resizer`. Since `volume.kubernetes.io/storage-resizer`
-annotation defines the stroage backend actually being used, for in-tree volume, the resizer name is the
-in-tree plugin name; for CSI volume, the resizer name is the CSI driver name. Then when the resizer
-name matches to the CSI driver name, it guarantees that the PV is provisioned by a CSI driver and it should
-be resized by the same driver, hence external resizer will proceed with volume resizing. Otherwise,
+annotation defines the CSI plugin name which will handle external resizing, it should
+match driver running with external-resizer, hence external resizer will proceed with volume resizing. Otherwise,
 it will yield to in-tree resizer.
 
 #### Online Resizing
