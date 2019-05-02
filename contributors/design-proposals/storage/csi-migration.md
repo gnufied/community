@@ -288,10 +288,14 @@ existing Pods in the ADC.
 
 ### Volume Resize
 #### Offline Resizing
-In the OperationGenerator, `GenerateExpandVolumeFunc` is used to expand a volume after 
-Pod is deleted. At the beginning of the `GenerateExpandVolumeFunc`, we will check whether 
-the volume supports migration and whether migration is enabled. If enabled, we will return
-a noop function to by-pass in-tree resizer (expand controller).
+In the OperationGenerator, `GenerateExpandVolumeFunc` is used to expand a volume after
+user updates a PVC requesting more storage. At the beginning of the `GenerateExpandVolumeFunc`, we will check whether
+the volume supports migration and whether migration is enabled. If enabled, we will
+set a annotation to the PVC with key `volume.kubernetes.io/storage-resizer` and value being CSI provisioner name
+that will handle actual external resizing. The CSI provisioner name can be derived from translating in-tree provisioner name
+to CSI provisioner name by translation library. We will also add an event to PVC about resizing being handled
+by external controller.
+
 
 In the OperationGenerator, `GenerateMountVolumeFunc` is used to expand file system after volume
 is expanded and staged/mounted. The migration logic is covered by previous migration of volume mount.
@@ -299,6 +303,7 @@ is expanded and staged/mounted. The migration logic is covered by previous migra
 For external resizer, we will update it to expand volume for both CSI volume and in-tree 
 volume (only if migration is enabled). For migrated in-tree volume, it will update in-tree PV object
 with new volume size and mark in-tree PVC as resizing finished.
+
 
 To synchronize between in-tree resizer and external resize, external resizer will find resizer name
 using PVC annotation `volume.kubernetes.io/storage-resizer`. Since `volume.kubernetes.io/storage-resizer`
@@ -309,7 +314,13 @@ be resized by the same driver, hence external resizer will proceed with volume r
 it will yield to in-tree resizer.
 
 #### Online Resizing
-//TODO: Design
+
+Handling online resizing does not require anything special in control plane. The behaviour will be
+same as offline resizing. 
+
+To handle expansion on kubelet - we will convert volume spec to CSI spec before handling the call
+to volume plugin inside `GenerateExpandVolumeFSWithoutUnmountingFunc`.
+
 
 ### Raw Block
 In the OperationGenerator, `GenerateMapVolumeFunc`, `GenerateUnmapVolumeFunc` and 
